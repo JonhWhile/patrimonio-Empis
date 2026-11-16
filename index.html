@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Patrimonio Empis</title>
+<title>Patrimônio PBH</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
 <style>
 :root{--quadro:#1f3d36;--giz:#f4f1e8;--lapis:#f2c94c;--papel:#fbfaf6;--tinta:#1d2a27;--linha:#d9d5c7;--ok:#2f7d4f;--erro:#b3372b;--r:6px}
@@ -47,7 +47,7 @@ th{background:var(--giz);font-weight:700}
 </head>
 <body>
 <header><div class="wrap">
-  <h1>Patrimonio Empis</h1>
+  <h1>Patrimônio PBH</h1>
   <p>Controle de retirada e devolução de equipamentos · Suporte técnico</p>
   <nav role="tablist">
     <button role="tab" data-tab="emprestimo" aria-selected="true">Novo empréstimo</button>
@@ -104,15 +104,18 @@ th{background:var(--giz);font-weight:700}
 
 <section id="historico">
   <h2>Histórico de empréstimos</h2>
+  <p class="sub">Exporte todo o histórico para abrir no Excel.</p>
+  <button class="btn" id="exportarExcel" type="button">Exportar histórico para Excel</button><br>
   <input class="busca" id="busca" type="search" placeholder="Buscar por nome, setor ou equipamento" aria-label="Buscar">
   <div id="tabHist"></div>
 </section>
 </main>
 <div id="toast" role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ====== URL do aplicativo da Web (Apps Script) ======
-const API_URL = "https://script.google.com/macros/s/AKfycbyBlLt9uoefgLecZT00NHteyH9fhStD3ftJkx_wwheHroUiKVwPE5QGGfphzPyFin4z/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyi2AQgqAv09qY4IEXpEkr9fvfd6ubBuUk4Us7pRiH8aoMNrLR_qGVWCb2XQz62GN0/exec";
 // ====================================================
 
 const $ = s => document.querySelector(s);
@@ -215,6 +218,33 @@ $('#fEqp').onsubmit = async ev => {
   if (await enviar(d, f.querySelector('button'))) { toast('Equipamento ' + d.codigo + ' registrado.'); f.reset(); }
 };
 $('#busca').oninput = historico;
+$('#exportarExcel').onclick = () => {
+  if (!emp.length) { toast('Não há histórico para exportar.', 'erro'); return; }
+  if (typeof XLSX === 'undefined') { toast('Não foi possível carregar o exportador Excel. Verifique sua conexão e tente novamente.', 'erro'); return; }
+  const dados = emp.map(e => ({
+    'Responsável': e.responsavel,
+    'Setor': e.setor,
+    'Equipamento': e.equipamento,
+    'Número': e.codigo,
+    'Quantidade': e.quantidade,
+    'Data do empréstimo': e.retirada,
+    'Devolução prevista': e.prevista || 'Não definida',
+    'Data da devolução': e.devolucao || '',
+    'Autorizado por': e.autorizado,
+    'E-mail': e.email,
+    'Telefone': e.telefone,
+    'Status': e.status
+  }));
+  const planilha = XLSX.utils.json_to_sheet(dados);
+  planilha['!cols'] = [
+    { wch: 26 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 12 },
+    { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 24 }, { wch: 32 },
+    { wch: 18 }, { wch: 16 }
+  ];
+  const livro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(livro, planilha, 'Histórico');
+  XLSX.writeFile(livro, 'historico-patrimonio-pbh.xlsx');
+};
 carregar();
 </script>
 </body>
