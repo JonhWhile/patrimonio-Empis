@@ -66,12 +66,12 @@ th{background:var(--giz);font-weight:700}
   <form id="fEmp">
     <label class="full">Nome completo<input name="nome" required autocomplete="off"></label>
     <label>E-mail (institucional ou pessoal)<input name="email" type="email" required></label>
-    <label>Telefone<input name="telefone" type="tel" required placeholder="(31) 90000-0000"></label>
+    <label>Telefone<input name="telefone" type="tel" placeholder="(31) 90000-0000"></label>
     <label>Setor onde trabalha<input name="setor" required></label>
     <label>Autorizado por (técnico)<input name="tecnico" required></label>
     <label>Número do equipamento<input name="codigo" list="dlDisp" required autocomplete="off"><span class="hint" id="hintEmp"></span></label>
     <label>Quantidade<input name="quantidade" type="number" min="1" value="1" required></label>
-    <label class="full">Devolver em (data e horário)<input name="prevista" type="datetime-local" required></label>
+    <label class="full">Devolver em (data e horário)<input name="prevista" type="datetime-local"></label>
     <div class="full"><button class="btn lapis" type="submit">Confirmar empréstimo</button></div>
   </form>
   <datalist id="dlDisp"></datalist>
@@ -112,7 +112,7 @@ th{background:var(--giz);font-weight:700}
 
 <script>
 // ====== URL do aplicativo da Web (Apps Script) ======
-const API_URL = "https://script.google.com/macros/s/AKfycbxc7boOiCrn2e3kJ_S0pUDtknl0tFYzEgQdDsnWDzGd1gbNgBlw4Del2G3GG81ecDrR/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyBlLt9uoefgLecZT00NHteyH9fhStD3ftJkx_wwheHroUiKVwPE5QGGfphzPyFin4z/exec";
 // ====================================================
 
 const $ = s => document.querySelector(s);
