@@ -41,6 +41,7 @@ th{background:var(--giz);font-weight:700}
 #toast.ok{background:var(--ok)}#toast.erro{background:var(--erro)}
 #aviso{background:#fbf0cc;border-left:5px solid var(--lapis);padding:12px 16px;margin-bottom:20px;display:none}
 .busca{max-width:320px;margin:10px 0}
+#buscaEqp{max-width:420px;margin-top:8px}.lista-selecao{max-height:340px;overflow:auto;border:1.5px solid var(--linha);border-radius:var(--r);background:#fff}.item-eqp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--linha)}.item-eqp:last-child{border-bottom:0}.item-eqp input{width:18px;height:18px;padding:0}.item-eqp small{color:#5b6663}.acoes-lista{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.acoes-lista button{font:inherit;border:1px solid var(--linha);border-radius:var(--r);background:#fff;padding:7px 10px;cursor:pointer}.contador{font-weight:700;color:var(--quadro);margin:8px 0}
 @media(max-width:600px){form{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:no-preference){#toast{animation:sobe .25s ease-out}@keyframes sobe{from{opacity:0;transform:translate(-50%,10px)}}}
 </style>
@@ -62,19 +63,17 @@ th{background:var(--giz);font-weight:700}
 
 <section id="emprestimo" class="on">
   <h2>Novo empréstimo</h2>
-  <p class="sub">Preencha os dados de quem está retirando e confirme. O funcionário recebe um e-mail na hora.</p>
+  <p class="sub">Preencha os dados do professor, selecione todos os equipamentos e confirme. Um único e-mail será enviado com a lista completa.</p>
   <form id="fEmp">
     <label class="full">Nome completo<input name="nome" required autocomplete="off"></label>
     <label>E-mail (institucional ou pessoal)<input name="email" type="email" required></label>
     <label>Telefone<input name="telefone" type="tel" placeholder="(31) 90000-0000"></label>
     <label>Setor onde trabalha<input name="setor" required></label>
     <label>Autorizado por (técnico)<input name="tecnico" required></label>
-    <label>Número do equipamento<input name="codigo" list="dlDisp" required autocomplete="off"><span class="hint" id="hintEmp"></span></label>
-    <label>Quantidade<input name="quantidade" type="number" min="1" value="1" required></label>
+    <div class="full"><label for="buscaEqp">Equipamentos disponíveis</label><input id="buscaEqp" type="search" placeholder="Filtrar por número ou nome do equipamento" autocomplete="off" aria-label="Filtrar equipamentos disponíveis"><div class="acoes-lista"><button type="button" id="selecionarTodos">Selecionar todos disponíveis</button><button type="button" id="limparSelecao">Limpar seleção</button></div><div id="listaSelecao" class="lista-selecao" role="group" aria-label="Selecione os equipamentos para empréstimo"></div><p class="contador" id="contadorSelecao" aria-live="polite">Nenhum equipamento selecionado.</p></div>
     <label class="full">Devolver em (data e horário)<input name="prevista" type="datetime-local"></label>
     <div class="full"><button class="btn lapis" type="submit">Confirmar empréstimo</button></div>
   </form>
-  <datalist id="dlDisp"></datalist>
 </section>
 
 <section id="devolucao">
@@ -119,6 +118,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwQhR0epfWDCSkXeXb6qDZI
 
 const $ = s => document.querySelector(s);
 let eqp = [], emp = [];
+const selecionados = new Set();
 
 function toast(msg, tipo = 'ok') {
   const t = $('#toast'); t.textContent = msg; t.className = tipo; t.style.display = 'block';
@@ -152,7 +152,7 @@ function parseBR(s) { // dd/MM/yyyy HH:mm
 function atrasado(e) { const p = parseBR(e.prevista); return e.status === 'Em aberto' && p && p < new Date(); }
 
 function desenhar() {
-  $('#dlDisp').innerHTML = eqp.filter(e => e.status === 'Disponível').map(e => `<option value="${esc(e.codigo)}">${esc(e.nome)}</option>`).join('');
+  desenharSelecao();
   const abertos = emp.filter(e => e.status === 'Em aberto');
   $('#dlEmp').innerHTML = abertos.map(e => `<option value="${esc(e.codigo)}">${esc(e.equipamento)} - ${esc(e.responsavel)}</option>`).join('');
 
@@ -194,17 +194,17 @@ function dica(input, hint, lista, fmt) {
     hint.textContent = e ? fmt(e) : '';
   });
 }
-dica($('#fEmp').codigo, $('#hintEmp'), () => eqp, e => e.status === 'Disponível' ? '✓ ' + e.nome + ' (disponível)' : '✗ ' + e.nome + ' já está emprestado');
 dica($('#fDev').codigo, $('#hintDev'), () => emp.filter(e => e.status === 'Em aberto'), e => e.equipamento + ' com ' + e.responsavel);
 
 // Lembrar técnico
 $('#fEmp').tecnico.value = localStorage.getItem('tecnico') || '';
 
 $('#fEmp').onsubmit = async ev => {
-  ev.preventDefault(); const f = ev.target; const btn = f.querySelector('button');
-  const d = Object.fromEntries(new FormData(f)); d.acao = 'emprestar';
+  ev.preventDefault(); const f = ev.target; const btn = f.querySelector('button[type=submit]');
+  if (!selecionados.size) { toast('Selecione ao menos um equipamento disponível.', 'erro'); return; }
+  const d = Object.fromEntries(new FormData(f)); d.acao = 'emprestar'; d.codigos = Array.from(selecionados);
   localStorage.setItem('tecnico', d.tecnico);
-  if (await enviar(d, btn)) { toast('Empréstimo confirmado. E-mail enviado para ' + d.email + '.'); const t = d.tecnico; f.reset(); f.tecnico.value = t; $('#hintEmp').textContent = ''; }
+  if (await enviar(d, btn)) { const n = d.codigos.length; toast(`${n} equipamento${n === 1 ? '' : 's'} emprestado${n === 1 ? '' : 's'}. E-mail enviado para ${d.email}.`); const t = d.tecnico; f.reset(); f.tecnico.value = t; selecionados.clear(); desenharSelecao(); }
 };
 async function devolver(codigo, btn) {
   const r = await enviar({ acao: 'devolver', codigo }, btn);
