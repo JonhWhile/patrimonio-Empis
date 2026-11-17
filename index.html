@@ -120,6 +120,29 @@ const $ = s => document.querySelector(s);
 let eqp = [], emp = [];
 const selecionados = new Set();
 
+function desenharSelecao() {
+  const q = $('#buscaEqp').value.trim().toLowerCase();
+  const livres = eqp.filter(e => e.status === 'Disponível');
+  const codigos = new Set(livres.map(e => String(e.codigo)));
+  selecionados.forEach(c => { if (!codigos.has(c)) selecionados.delete(c); });
+  const l = livres.filter(e => !q || (e.codigo + ' ' + e.nome + ' ' + (e.categoria || '')).toLowerCase().includes(q));
+  $('#listaSelecao').innerHTML = l.length ? l.map(e => `<label class="item-eqp"><input type="checkbox" value="${esc(e.codigo)}"${selecionados.has(String(e.codigo)) ? ' checked' : ''}><span><b>${esc(e.codigo)}</b> - ${esc(e.nome)}</span><small>${esc(e.categoria)}</small></label>`).join('')
+    : '<div class="empty">Nenhum equipamento disponível.</div>';
+  const n = selecionados.size;
+  $('#contadorSelecao').textContent = n ? `${n} equipamento${n === 1 ? '' : 's'} selecionado${n === 1 ? '' : 's'}.` : 'Nenhum equipamento selecionado.';
+}
+$('#listaSelecao').onchange = ev => {
+  const c = ev.target.value; if (ev.target.checked) selecionados.add(c); else selecionados.delete(c);
+  desenharSelecao();
+};
+$('#buscaEqp').oninput = desenharSelecao;
+$('#selecionarTodos').onclick = () => {
+  const q = $('#buscaEqp').value.trim().toLowerCase();
+  eqp.filter(e => e.status === 'Disponível' && (!q || (e.codigo + ' ' + e.nome + ' ' + (e.categoria || '')).toLowerCase().includes(q))).forEach(e => selecionados.add(String(e.codigo)));
+  desenharSelecao();
+};
+$('#limparSelecao').onclick = () => { selecionados.clear(); desenharSelecao(); };
+
 function toast(msg, tipo = 'ok') {
   const t = $('#toast'); t.textContent = msg; t.className = tipo; t.style.display = 'block';
   clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4500);
